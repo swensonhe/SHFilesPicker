@@ -58,6 +58,8 @@ struct ImagePickerView: UIViewControllerRepresentable {
     private let compression: ImagePickerViewCompression
     private let onSelect: ([File]) -> Void
     private let onCancel: () -> Void
+    private let onStartImageProcessing: () -> Void
+    private let onEndImageProcessing: () -> Void
     
     @Environment(\.presentationMode) private var presentationMode
     
@@ -66,13 +68,17 @@ struct ImagePickerView: UIViewControllerRepresentable {
         cropMode: ImagePickerViewCropMode,
         compression: ImagePickerViewCompression = .compressed(),
         onSelect: @escaping ([File]) -> Void,
-        onCancel: @escaping () -> Void
+        onCancel: @escaping () -> Void,
+        onStartImageProcessing: @escaping () -> Void,
+        onEndImageProcessing: @escaping () -> Void
     ) {
         self.source = source
         self.cropMode = cropMode
         self.compression = compression
         self.onSelect = onSelect
         self.onCancel = onCancel
+        self.onStartImageProcessing = onStartImageProcessing
+        self.onEndImageProcessing = onEndImageProcessing
     }
     
     func makeUIViewController(context: UIViewControllerRepresentableContext<ImagePickerView>) -> UIViewController {
@@ -239,8 +245,20 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
             parent.onCancel()
         } else {
             Task { @MainActor in
+                switch parent.cropMode {
+                case .notAllowed:
+                    parent.presentationMode.wrappedValue.dismiss()
+                    
+                default:
+                    break
+                }
+                
+                parent.onStartImageProcessing()
+                
                 let itemProviders = results.map(\.itemProvider)
                 let images = await loadImages(from: itemProviders)
+                
+                parent.onEndImageProcessing()
                 
                 switch parent.cropMode {
                 case .allowed(let presetFixedRatioType):
@@ -258,7 +276,6 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                     }
                     
                 case .notAllowed:
-                    parent.presentationMode.wrappedValue.dismiss()
                     parent.process(images: images)
                 }
             }

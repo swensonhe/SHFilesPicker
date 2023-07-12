@@ -8,19 +8,25 @@ public struct ImagePickerViewModifier: ViewModifier {
     private let compression: ImagePickerViewCompression
     private let onSelect: ([File]) -> Void
     private let onCancel: (() -> Void)?
+    private let onStartImageProcessing: (() -> Void)?
+    private let onEndImageProcessing: (() -> Void)?
     
     init(
         imagePickerSource: Binding<FilePickerSource?>,
         cropMode: ImagePickerViewCropMode,
         compression: ImagePickerViewCompression,
         onSelect: @escaping ([File]) -> Void,
-        onCancel: (() -> Void)? = nil
+        onCancel: (() -> Void)? = nil,
+        onStartImageProcessing: (() -> Void)? = nil,
+        onEndImageProcessing: (() -> Void)? = nil
     ) {
         self._imagePickerSource = imagePickerSource
         self.cropMode = cropMode
         self.compression = compression
         self.onSelect = onSelect
         self.onCancel = onCancel
+        self.onStartImageProcessing = onStartImageProcessing
+        self.onEndImageProcessing = onEndImageProcessing
     }
     
     public func body(content: Content) -> some View {
@@ -39,6 +45,14 @@ public struct ImagePickerViewModifier: ViewModifier {
                         onCancel: {
                             self.imagePickerSource = nil
                             onCancel?()
+                        },
+                        onStartImageProcessing: {
+                            self.imagePickerSource = nil
+                            onStartImageProcessing?()
+                        },
+                        onEndImageProcessing: {
+                            self.imagePickerSource = nil
+                            onEndImageProcessing?()
                         }
                     )
                     .ignoresSafeArea()
@@ -55,6 +69,14 @@ public struct ImagePickerViewModifier: ViewModifier {
                         onCancel: {
                             self.imagePickerSource = nil
                             onCancel?()
+                        },
+                        onStartImageProcessing: {
+                            self.imagePickerSource = nil
+                            onStartImageProcessing?()
+                        },
+                        onEndImageProcessing: {
+                            self.imagePickerSource = nil
+                            onEndImageProcessing?()
                         }
                     )
                     .ignoresSafeArea()
@@ -79,14 +101,18 @@ extension View {
         cropMode: ImagePickerViewCropMode,
         compression: ImagePickerViewCompression,
         onSelect: @escaping ([File]) -> Void,
-        onCancel: (() -> Void)? = nil
+        onCancel: (() -> Void)? = nil,
+        onStartImageProcessing: (() -> Void)? = nil,
+        onEndImageProcessing: (() -> Void)? = nil
     ) -> some View {
         modifier(ImagePickerViewModifier(
             imagePickerSource: source,
             cropMode: cropMode,
             compression: compression,
             onSelect: onSelect,
-            onCancel: onCancel
+            onCancel: onCancel,
+            onStartImageProcessing: onStartImageProcessing,
+            onEndImageProcessing: onEndImageProcessing
         ))
     }
     
