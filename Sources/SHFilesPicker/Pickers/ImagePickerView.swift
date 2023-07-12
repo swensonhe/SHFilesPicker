@@ -258,8 +258,6 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                 let itemProviders = results.map(\.itemProvider)
                 let images = await loadImages(from: itemProviders)
                 
-                parent.onEndImageProcessing()
-                
                 switch parent.cropMode {
                 case .allowed(let presetFixedRatioType):
                     if images.count == 1 {
@@ -278,6 +276,8 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                 case .notAllowed:
                     parent.process(images: images)
                 }
+                
+                parent.onEndImageProcessing()
             }
         }
     }
