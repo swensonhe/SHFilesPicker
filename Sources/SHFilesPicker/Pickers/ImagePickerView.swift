@@ -248,12 +248,11 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                 switch parent.cropMode {
                 case .notAllowed:
                     parent.presentationMode.wrappedValue.dismiss()
+                    parent.onStartImageProcessing()
                     
                 default:
                     break
                 }
-                
-                parent.onStartImageProcessing()
                 
                 let itemProviders = results.map(\.itemProvider)
                 let images = await loadImages(from: itemProviders)
@@ -275,9 +274,8 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                     
                 case .notAllowed:
                     parent.process(images: images)
+                    parent.onEndImageProcessing()
                 }
-                
-                parent.onEndImageProcessing()
             }
         }
     }
