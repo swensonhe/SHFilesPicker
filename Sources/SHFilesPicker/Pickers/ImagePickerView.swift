@@ -265,16 +265,43 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
         }
     }
     
-    private func loadImage(from itemProvider: NSItemProvider) async -> UIImage? {
+    private func loadImage(from itemProvider: NSItemProvider) async -> Data? {
         return await withCheckedContinuation { continuation in
-            itemProvider.loadObject(ofClass: UIImage.self) { image, _ in
-                continuation.resume(returning: image as? UIImage)
+            itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, _ in
+                let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+                
+                let downsampleOptions = [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceThumbnailMaxPixelSize: 2_000,
+                ] as [CFString : Any] as CFDictionary
+                
+                let destinationProperties = [
+                    kCGImageDestinationLossyCompressionQuality: 1
+                ] as CFDictionary
+                
+                let data = NSMutableData()
+                
+                guard
+                    let url,
+                    let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions),
+                    let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, downsampleOptions),
+                    let imageDestination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil)
+                else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                
+                CGImageDestinationAddImage(imageDestination, cgImage, destinationProperties)
+                CGImageDestinationFinalize(imageDestination)
+                
+                continuation.resume(returning: data as Data)
             }
         }
     }
     
     private func loadImages(from itemProviders: [NSItemProvider]) async -> [UIImage] {
-        return await withTaskGroup(of: UIImage?.self, returning: [UIImage].self) { group in
+        return await withTaskGroup(of: Data?.self, returning: [UIImage].self) { group in
             var images: [UIImage] = []
             
             for itemProvider in itemProviders {
@@ -283,8 +310,8 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                 }
             }
             
-            for await image in group {
-                if let image {
+            for await data in group {
+                if let data, let image = UIImage(data: data) {
                     images.append(image)
                 }
             }
