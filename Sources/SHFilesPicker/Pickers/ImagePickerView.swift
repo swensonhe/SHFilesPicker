@@ -58,6 +58,8 @@ struct ImagePickerView: UIViewControllerRepresentable {
     private let compression: ImagePickerViewCompression
     private let onSelect: ([File]) -> Void
     private let onCancel: () -> Void
+    private let onStartImageProcessing: () -> Void
+    private let onEndImageProcessing: () -> Void
     
     @Environment(\.presentationMode) private var presentationMode
     
@@ -66,13 +68,17 @@ struct ImagePickerView: UIViewControllerRepresentable {
         cropMode: ImagePickerViewCropMode,
         compression: ImagePickerViewCompression = .compressed(),
         onSelect: @escaping ([File]) -> Void,
-        onCancel: @escaping () -> Void
+        onCancel: @escaping () -> Void,
+        onStartImageProcessing: @escaping () -> Void,
+        onEndImageProcessing: @escaping () -> Void
     ) {
         self.source = source
         self.cropMode = cropMode
         self.compression = compression
         self.onSelect = onSelect
         self.onCancel = onCancel
+        self.onStartImageProcessing = onStartImageProcessing
+        self.onEndImageProcessing = onEndImageProcessing
     }
     
     func makeUIViewController(context: UIViewControllerRepresentableContext<ImagePickerView>) -> UIViewController {
@@ -239,6 +245,16 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
             parent.onCancel()
         } else {
             Task { @MainActor in
+                switch parent.cropMode {
+                case .notAllowed:
+                    parent.presentationMode.wrappedValue.dismiss()
+                    
+                default:
+                    break
+                }
+                
+                parent.onStartImageProcessing()
+                
                 let itemProviders = results.map(\.itemProvider)
                 let images = await loadImages(from: itemProviders)
                 
@@ -258,23 +274,51 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                     }
                     
                 case .notAllowed:
-                    parent.presentationMode.wrappedValue.dismiss()
                     parent.process(images: images)
                 }
+                
+                parent.onEndImageProcessing()
             }
         }
     }
     
-    private func loadImage(from itemProvider: NSItemProvider) async -> UIImage? {
+    private func loadImage(from itemProvider: NSItemProvider) async -> Data? {
         return await withCheckedContinuation { continuation in
-            itemProvider.loadObject(ofClass: UIImage.self) { image, _ in
-                continuation.resume(returning: image as? UIImage)
+            itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.image.identifier) { url, _ in
+                let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+                
+                let downsampleOptions = [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceThumbnailMaxPixelSize: 2_000,
+                ] as [CFString : Any] as CFDictionary
+                
+                let destinationProperties = [
+                    kCGImageDestinationLossyCompressionQuality: 1
+                ] as CFDictionary
+                
+                let data = NSMutableData()
+                
+                guard
+                    let url,
+                    let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions),
+                    let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, downsampleOptions),
+                    let imageDestination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil)
+                else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                
+                CGImageDestinationAddImage(imageDestination, cgImage, destinationProperties)
+                CGImageDestinationFinalize(imageDestination)
+                
+                continuation.resume(returning: data as Data)
             }
         }
     }
     
     private func loadImages(from itemProviders: [NSItemProvider]) async -> [UIImage] {
-        return await withTaskGroup(of: UIImage?.self, returning: [UIImage].self) { group in
+        return await withTaskGroup(of: Data?.self, returning: [UIImage].self) { group in
             var images: [UIImage] = []
             
             for itemProvider in itemProviders {
@@ -283,8 +327,8 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                 }
             }
             
-            for await image in group {
-                if let image {
+            for await data in group {
+                if let data, let image = UIImage(data: data) {
                     images.append(image)
                 }
             }

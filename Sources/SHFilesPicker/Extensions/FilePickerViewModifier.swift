@@ -9,6 +9,8 @@ public struct FilePickerViewModifier: ViewModifier {
     private let doucmentPickerViewAllowsMultipleSelection: Bool
     private let onSelect: ([File]) -> Void
     private let onCancel: (() -> Void)?
+    private let onStartImageProcessing: (() -> Void)?
+    private let onEndImageProcessing: (() -> Void)?
     
     init(
         filePickerSource: Binding<FilePickerSource?>,
@@ -16,7 +18,9 @@ public struct FilePickerViewModifier: ViewModifier {
         imagePickerViewCompression: ImagePickerViewCompression,
         doucmentPickerViewAllowsMultipleSelection: Bool,
         onSelect: @escaping ([File]) -> Void,
-        onCancel: (() -> Void)? = nil
+        onCancel: (() -> Void)? = nil,
+        onStartImageProcessing: (() -> Void)? = nil,
+        onEndImageProcessing: (() -> Void)? = nil
     ) {
         self._filePickerSource = filePickerSource
         self.imagePickerViewCropMode = imagePickerViewCropMode
@@ -24,6 +28,8 @@ public struct FilePickerViewModifier: ViewModifier {
         self.doucmentPickerViewAllowsMultipleSelection = doucmentPickerViewAllowsMultipleSelection
         self.onSelect = onSelect
         self.onCancel = onCancel
+        self.onStartImageProcessing = onStartImageProcessing
+        self.onEndImageProcessing = onEndImageProcessing
     }
     
     public func body(content: Content) -> some View {
@@ -42,6 +48,14 @@ public struct FilePickerViewModifier: ViewModifier {
                         onCancel: {
                             self.filePickerSource = nil
                             onCancel?()
+                        },
+                        onStartImageProcessing: {
+                            self.filePickerSource = nil
+                            onStartImageProcessing?()
+                        },
+                        onEndImageProcessing: {
+                            self.filePickerSource = nil
+                            onEndImageProcessing?()
                         }
                     )
                     .ignoresSafeArea()
@@ -58,6 +72,14 @@ public struct FilePickerViewModifier: ViewModifier {
                         onCancel: {
                             self.filePickerSource = nil
                             onCancel?()
+                        },
+                        onStartImageProcessing: {
+                            self.filePickerSource = nil
+                            onStartImageProcessing?()
+                        },
+                        onEndImageProcessing: {
+                            self.filePickerSource = nil
+                            onEndImageProcessing?()
                         }
                     )
                     .ignoresSafeArea()
@@ -89,7 +111,9 @@ extension View {
         imagePickerViewCompression: ImagePickerViewCompression,
         doucmentPickerViewAllowsMultipleSelection: Bool,
         onSelect: @escaping ([File]) -> Void,
-        onCancel: (() -> Void)? = nil
+        onCancel: (() -> Void)? = nil,
+        onStartImageProcessing: (() -> Void)? = nil,
+        onEndImageProcessing: (() -> Void)? = nil
     ) -> some View {
         modifier(FilePickerViewModifier(
             filePickerSource: source,
@@ -97,7 +121,9 @@ extension View {
             imagePickerViewCompression: imagePickerViewCompression,
             doucmentPickerViewAllowsMultipleSelection: doucmentPickerViewAllowsMultipleSelection,
             onSelect: onSelect,
-            onCancel: onCancel
+            onCancel: onCancel,
+            onStartImageProcessing: onStartImageProcessing,
+            onEndImageProcessing: onEndImageProcessing
         ))
     }
     
