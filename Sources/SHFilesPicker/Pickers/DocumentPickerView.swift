@@ -55,7 +55,15 @@ extension DocumentPickerView {
                     guard let data = try? Data(contentsOf: url) else { continue }
                     let fileName = url.deletingPathExtension().lastPathComponent
                     let utType = UTType(tag: url.pathExtension, tagClass: .filenameExtension, conformingTo: nil)
-                    let file = File(id: UUID().uuidString, name: fileName, data: data, uniformType: utType)
+                    let file = File(
+                        id: UUID().uuidString,
+                        name: fileName,
+                        data: data,
+                        uniformType: utType,
+                        width: nil,
+                        height: nil
+                    )
+                    
                     files.append(file)
                 }
                 
