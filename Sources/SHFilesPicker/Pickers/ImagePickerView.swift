@@ -148,14 +148,24 @@ struct ImagePickerView: UIViewControllerRepresentable {
         switch compression {
         case .compressed(let maximumSize, let quality):
             images.forEach { image in
+                let resizedImage = image.resized(to: maximumSize)
+                
                 guard
-                    let data = image.resized(to: maximumSize).jpegData(compressionQuality: quality.value)
+                    let data = resizedImage.jpegData(compressionQuality: quality.value)
                 else {
                     assertionFailure("The image has no data or the underlying CGImageRef contains data in an unsupported bitmap format.")
                     return
                 }
                 
-                let file = File(id: UUID().uuidString, name: "Image", data: data, uniformType: .jpeg)
+                let file = File(
+                    id: UUID().uuidString,
+                    name: "Image",
+                    data: data,
+                    uniformType: .jpeg,
+                    width: resizedImage.size.width,
+                    height: resizedImage.size.height
+                )
+                
                 files.append(file)
             }
             
@@ -168,7 +178,15 @@ struct ImagePickerView: UIViewControllerRepresentable {
                     return
                 }
                 
-                let file = File(id: UUID().uuidString, name: "Image", data: data, uniformType: .jpeg)
+                let file = File(
+                    id: UUID().uuidString,
+                    name: "Image",
+                    data: data,
+                    uniformType: .jpeg,
+                    width: image.size.width,
+                    height: image.size.height
+                )
+                
                 files.append(file)
             }
         }
