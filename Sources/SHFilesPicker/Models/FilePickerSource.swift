@@ -2,6 +2,7 @@ public enum FilePickerSource: Identifiable {
     case camera
     case photos(selectionLimit: Int)
     case files
+    case multimedia(selectionLimit: Int)
     
     public var id: String {
         switch self {
@@ -13,6 +14,9 @@ public enum FilePickerSource: Identifiable {
             
         case .files:
             return "files"
+            
+        case .multimedia:
+            return "multimedia"
         }
     }
 }

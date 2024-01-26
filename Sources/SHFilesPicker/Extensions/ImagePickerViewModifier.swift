@@ -83,6 +83,30 @@ public struct ImagePickerViewModifier: ViewModifier {
                     
                 case .files:
                     makeEmptyView()
+                    
+                case .multimedia(let selectionLimit):
+                    ImagePickerView(
+                        source: .multimedia(selectionLimit: selectionLimit),
+                        cropMode: cropMode,
+                        compression: compression,
+                        onSelect: { files in
+                            self.imagePickerSource = nil
+                            onSelect(files)
+                        },
+                        onCancel: {
+                            self.imagePickerSource = nil
+                            onCancel?()
+                        },
+                        onStartImageProcessing: {
+                            self.imagePickerSource = nil
+                            onStartImageProcessing?()
+                        },
+                        onEndImageProcessing: {
+                            self.imagePickerSource = nil
+                            onEndImageProcessing?()
+                        }
+                    )
+                    .ignoresSafeArea()
                 }
             }
     }
