@@ -97,6 +97,30 @@ public struct FilePickerViewModifier: ViewModifier {
                         }
                     )
                     .ignoresSafeArea()
+                    
+                case .multimedia(let selectionLimit):
+                    ImagePickerView(
+                        source: .multimedia(selectionLimit: selectionLimit),
+                        cropMode: imagePickerViewCropMode,
+                        compression: imagePickerViewCompression,
+                        onSelect: { files in
+                            self.filePickerSource = nil
+                            onSelect(files)
+                        },
+                        onCancel: {
+                            self.filePickerSource = nil
+                            onCancel?()
+                        },
+                        onStartImageProcessing: {
+                            self.filePickerSource = nil
+                            onStartImageProcessing?()
+                        },
+                        onEndImageProcessing: {
+                            self.filePickerSource = nil
+                            onEndImageProcessing?()
+                        }
+                    )
+                    .ignoresSafeArea()
                 }
             }
     }

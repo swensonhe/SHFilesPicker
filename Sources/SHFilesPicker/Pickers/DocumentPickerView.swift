@@ -60,6 +60,8 @@ extension DocumentPickerView {
                         name: fileName,
                         data: data,
                         uniformType: utType,
+                        url: url,
+                        previewURL: nil,
                         width: nil,
                         height: nil
                     )
