@@ -15,7 +15,7 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/guoyingtao/Mantis", exact: "2.1.1")
+        .package(url: "https://github.com/guoyingtao/Mantis", exact: "2.19.0")
     ],
     targets: [
         .target(
