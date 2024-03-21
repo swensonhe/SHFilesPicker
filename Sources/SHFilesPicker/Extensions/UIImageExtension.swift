@@ -2,7 +2,6 @@ import UIKit
 import AVKit
 
 extension UIImage {
-    
     func resized(to size: CGSize) -> UIImage {
         let isLandscape = self.size.width > self.size.height
         
@@ -26,5 +25,4 @@ extension UIImage {
         
         return resized
     }
-    
 }

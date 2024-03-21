@@ -1,12 +1,10 @@
 import SwiftUI
 
 public struct FilePickerViewModifier: ViewModifier {
-    
+    // MARK: Binding
     @Binding private var filePickerSource: FilePickerSource?
     
-    private let imagePickerViewCropMode: ImagePickerViewCropMode
-    private let imagePickerViewCompression: ImagePickerViewCompression
-    private let doucmentPickerViewAllowsMultipleSelection: Bool
+    // MARK: Properties
     private let onSelect: ([File]) -> Void
     private let onCancel: (() -> Void)?
     private let onStartImageProcessing: (() -> Void)?
@@ -14,18 +12,12 @@ public struct FilePickerViewModifier: ViewModifier {
     
     init(
         filePickerSource: Binding<FilePickerSource?>,
-        imagePickerViewCropMode: ImagePickerViewCropMode,
-        imagePickerViewCompression: ImagePickerViewCompression,
-        doucmentPickerViewAllowsMultipleSelection: Bool,
         onSelect: @escaping ([File]) -> Void,
         onCancel: (() -> Void)? = nil,
         onStartImageProcessing: (() -> Void)? = nil,
         onEndImageProcessing: (() -> Void)? = nil
     ) {
         self._filePickerSource = filePickerSource
-        self.imagePickerViewCropMode = imagePickerViewCropMode
-        self.imagePickerViewCompression = imagePickerViewCompression
-        self.doucmentPickerViewAllowsMultipleSelection = doucmentPickerViewAllowsMultipleSelection
         self.onSelect = onSelect
         self.onCancel = onCancel
         self.onStartImageProcessing = onStartImageProcessing
@@ -36,11 +28,9 @@ public struct FilePickerViewModifier: ViewModifier {
         content
             .sheet(item: $filePickerSource) { filePickerSource in
                 switch filePickerSource {
-                case .camera:
+                case .camera(let cropMode, let compression):
                     ImagePickerView(
-                        source: .camera,
-                        cropMode: imagePickerViewCropMode,
-                        compression: imagePickerViewCompression,
+                        source: .camera(cropMode: cropMode, compression: compression),
                         onSelect: { files in
                             self.filePickerSource = nil
                             onSelect(files)
@@ -60,12 +50,15 @@ public struct FilePickerViewModifier: ViewModifier {
                     )
                     .ignoresSafeArea()
                     
-                case .photos(let selectionLimit):
+                case .photos(let selectionLimit, let cropMode, let compression):
                     ImagePickerView(
-                        source: .photos(selectionLimit: selectionLimit),
-                        cropMode: imagePickerViewCropMode,
-                        compression: imagePickerViewCompression,
-                        onSelect: { files in
+                        source: .photos(
+                            selectionLimit: selectionLimit,
+                            cropMode: cropMode,
+                            compression: compression
+                        ),
+                        onSelect: {
+                            files in
                             self.filePickerSource = nil
                             onSelect(files)
                         },
@@ -84,9 +77,9 @@ public struct FilePickerViewModifier: ViewModifier {
                     )
                     .ignoresSafeArea()
                     
-                case .files:
+                case .files(let allowMultipleSelection):
                     DocumentPickerView(
-                        allowsMultipleSelection: doucmentPickerViewAllowsMultipleSelection,
+                        allowsMultipleSelection: allowMultipleSelection,
                         onSelect: { files in
                             self.filePickerSource = nil
                             onSelect(files)
@@ -98,11 +91,9 @@ public struct FilePickerViewModifier: ViewModifier {
                     )
                     .ignoresSafeArea()
                     
-                case .multimedia(let selectionLimit):
+                case .multimedia(let selectionLimit, let imageCompression):
                     ImagePickerView(
-                        source: .multimedia(selectionLimit: selectionLimit),
-                        cropMode: imagePickerViewCropMode,
-                        compression: imagePickerViewCompression,
+                        source: .multimedia(selectionLimit: selectionLimit, imageCompression: imageCompression),
                         onSelect: { files in
                             self.filePickerSource = nil
                             onSelect(files)
@@ -124,16 +115,11 @@ public struct FilePickerViewModifier: ViewModifier {
                 }
             }
     }
-    
 }
 
 extension View {
-    
     public func withFilePicker(
         source: Binding<FilePickerSource?>,
-        imagePickerViewCropMode: ImagePickerViewCropMode,
-        imagePickerViewCompression: ImagePickerViewCompression,
-        doucmentPickerViewAllowsMultipleSelection: Bool,
         onSelect: @escaping ([File]) -> Void,
         onCancel: (() -> Void)? = nil,
         onStartImageProcessing: (() -> Void)? = nil,
@@ -141,14 +127,10 @@ extension View {
     ) -> some View {
         modifier(FilePickerViewModifier(
             filePickerSource: source,
-            imagePickerViewCropMode: imagePickerViewCropMode,
-            imagePickerViewCompression: imagePickerViewCompression,
-            doucmentPickerViewAllowsMultipleSelection: doucmentPickerViewAllowsMultipleSelection,
             onSelect: onSelect,
             onCancel: onCancel,
             onStartImageProcessing: onStartImageProcessing,
             onEndImageProcessing: onEndImageProcessing
         ))
     }
-    
 }

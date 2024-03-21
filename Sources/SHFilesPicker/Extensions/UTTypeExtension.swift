@@ -1,7 +1,6 @@
 import UniformTypeIdentifiers
 
 public extension UTType {
-    
     static func allTypes() -> [UTType] {
         let types: [UTType] = [
             .item,
@@ -150,5 +149,4 @@ public extension UTType {
             return types + secondTypes + thirdTypes
         }
     }
-    
 }

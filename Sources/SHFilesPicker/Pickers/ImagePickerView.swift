@@ -3,7 +3,20 @@ import UIKit
 import Mantis
 import PhotosUI
 
-public enum ImagePickerViewCropMode {
+extension PresetFixedRatioType: Equatable {
+    public static func == (lhs: PresetFixedRatioType, rhs: PresetFixedRatioType) -> Bool {
+        switch (lhs, rhs) {
+        case (.alwaysUsingOnePresetFixedRatio(let lhsRatio), .alwaysUsingOnePresetFixedRatio(let rhsRatio)):
+            return lhsRatio == rhsRatio
+        case (.canUseMultiplePresetFixedRatio(let lhsDefaultRatio), .canUseMultiplePresetFixedRatio(let rhsDefaultRatio)):
+            return lhsDefaultRatio == rhsDefaultRatio
+        case (.alwaysUsingOnePresetFixedRatio, _), (.canUseMultiplePresetFixedRatio, _):
+            return false
+        }
+    }
+}
+
+public enum ImagePickerViewCropMode: Equatable {
     case allowed(presetFixedRatioType: PresetFixedRatioType)
     case notAllowed
     
@@ -18,7 +31,7 @@ public enum ImagePickerViewCropMode {
     }
 }
 
-public enum ImagePickerViewCompression {
+public enum ImagePickerViewCompression: Equatable {
     public enum Quality {
         case low
         case medium
@@ -47,13 +60,33 @@ public enum ImagePickerViewCompression {
 }
 
 struct ImagePickerView: UIViewControllerRepresentable {
-    
     enum Source: Equatable {
-        case multimedia(selectionLimit: Int)
-        case photos(selectionLimit: Int)
-        case camera
+        /// Allows picking multimedia (Photos / Videos) and applies selected image compression
+        /// On selected images and preview images that's extracted off selected videos
+        case multimedia(
+            selectionLimit: Int,
+            imageCompression: ImagePickerViewCompression = .compressed()
+        )
+        
+        /// Allows picking photos exclusively and applies selected crop mode / compression on selected image(s)
+        /// Note: If you specify the selection limit more than 1 and cropMode to `allowed` this is going to trigger an assertion
+        case photos(
+            selectionLimit: Int,
+            cropMode: ImagePickerViewCropMode,
+            compression: ImagePickerViewCompression = .compressed()
+        )
+        
+        /// Allows taking pictures from camera and applies selected crop mode / compression on selected image(s)
+        case camera(
+            cropMode: ImagePickerViewCropMode,
+            compression: ImagePickerViewCompression = .compressed()
+        )
     }
     
+    // MARK: Environment
+    @Environment(\.presentationMode) private var presentationMode
+    
+    // MARK: Properties
     private let source: Source
     private let cropMode: ImagePickerViewCropMode
     private let compression: ImagePickerViewCompression
@@ -62,20 +95,32 @@ struct ImagePickerView: UIViewControllerRepresentable {
     private let onStartImageProcessing: () -> Void
     private let onEndImageProcessing: () -> Void
     
-    @Environment(\.presentationMode) private var presentationMode
-    
     init(
         source: Source,
-        cropMode: ImagePickerViewCropMode,
-        compression: ImagePickerViewCompression = .compressed(),
         onSelect: @escaping ([File]) -> Void,
         onCancel: @escaping () -> Void,
         onStartImageProcessing: @escaping () -> Void,
         onEndImageProcessing: @escaping () -> Void
     ) {
+        switch source {
+        case .multimedia(_, let imageCompression):
+            self.cropMode = .notAllowed
+            self.compression = imageCompression
+            
+        case let .photos(selectionLimit, cropMode, compression):
+            if selectionLimit > 1 && cropMode != .notAllowed {
+                assertionFailure("Crop mode is not allowed when the selection limit is more than one")
+            }
+            
+            self.cropMode = cropMode
+            self.compression = compression
+            
+        case .camera(let cropMode, let compression):
+            self.cropMode = cropMode
+            self.compression = compression
+        }
+        
         self.source = source
-        self.cropMode = cropMode
-        self.compression = compression
         self.onSelect = onSelect
         self.onCancel = onCancel
         self.onStartImageProcessing = onStartImageProcessing
@@ -84,9 +129,7 @@ struct ImagePickerView: UIViewControllerRepresentable {
     
     func makeUIViewController(context: UIViewControllerRepresentableContext<ImagePickerView>) -> UIViewController {
         switch source {
-        case .multimedia(let selectionLimit):
-            assert(!(selectionLimit > 1 && cropMode.isCropAllowed), "Crop mode is set to allowed while selection limit is more than one, this is not allowed!")
-            
+        case .multimedia(let selectionLimit, _):
             var configuration = PHPickerConfiguration()
             configuration.filter = .any(of: [.images, .videos])
             configuration.selectionLimit = selectionLimit
@@ -98,7 +141,7 @@ struct ImagePickerView: UIViewControllerRepresentable {
             
             return photosPickerViewController
             
-        case .photos(let selectionLimit):
+        case .photos(let selectionLimit, _, _):
             assert(!(selectionLimit > 1 && cropMode.isCropAllowed), "Crop mode is set to allowed while selection limit is more than one, this is not allowed!")
             
             var configuration = PHPickerConfiguration()
@@ -174,13 +217,9 @@ struct ImagePickerView: UIViewControllerRepresentable {
                 
                 let file = File(
                     id: UUID().uuidString,
-                    name: "Image",
-                    data: data,
-                    uniformType: .jpeg,
-                    url: nil,
-                    previewURL: nil,
-                    width: resizedImage.size.width,
-                    height: resizedImage.size.height
+                    name: "image",
+                    type: .image(ImageFile(data: data, image: resizedImage, size: resizedImage.size)),
+                    uniformType: .jpeg
                 )
                 
                 files.append(file)
@@ -197,13 +236,9 @@ struct ImagePickerView: UIViewControllerRepresentable {
                 
                 let file = File(
                     id: UUID().uuidString,
-                    name: "Image",
-                    data: data,
-                    uniformType: .jpeg,
-                    url: nil,
-                    previewURL: nil,
-                    width: image.size.width,
-                    height: image.size.height
+                    name: "image",
+                    type: .image(ImageFile(data: data, image: image, size: image.size)),
+                    uniformType: .jpeg
                 )
                 
                 files.append(file)
@@ -211,6 +246,76 @@ struct ImagePickerView: UIViewControllerRepresentable {
         }
         
         return files
+    }
+    
+    private func resolutionForVideo(at url: URL) -> CGSize? {
+        guard let track = AVURLAsset(url: url).tracks(withMediaType: .video).first else { return nil }
+        let size = track.naturalSize.applying(track.preferredTransform)
+        return CGSize(width: abs(size.width), height: abs(size.height))
+    }
+    
+    private func process(video url: URL) async -> File? {
+        let videoResolution = resolutionForVideo(at: url)
+        
+        if videoResolution == nil {
+            debugPrint("Unable to calculate size for video, will default to image size")
+        }
+        
+        switch compression {
+        case .compressed(let maximumSize, let quality):
+            do {
+                let previewImage = try await url.getVideoPreviewImage()
+                let resizedImage = previewImage.resized(to: maximumSize)
+                guard let previewData = resizedImage.jpegData(compressionQuality: quality.value) else {
+                    debugPrint("Unable to create jpegData from resizedImage")
+                    return nil
+                }
+                
+                let videoFile = VideoFile(
+                    localURL: url,
+                    previewData: previewData,
+                    previewImage: resizedImage,
+                    size: videoResolution ?? resizedImage.size
+                )
+                
+                return File(
+                    id: UUID().uuidString,
+                    name: "video",
+                    type: .video(videoFile),
+                    uniformType: UTType(filenameExtension: url.pathExtension)
+                )
+
+            } catch {
+                debugPrint(error)
+                return nil
+            }
+            
+        case .original:
+            do {
+                let previewImage = try await url.getVideoPreviewImage()
+                guard let previewData = previewImage.jpegData(compressionQuality: 1.0) else {
+                    debugPrint("Unable to create jpegData from resizedImage")
+                    return nil
+                }
+                
+                let videoFile = VideoFile(
+                    localURL: url,
+                    previewData: previewData,
+                    previewImage: previewImage,
+                    size: videoResolution ?? previewImage.size
+                )
+                
+                return File(
+                    id: UUID().uuidString,
+                    name: "video",
+                    type: .video(videoFile),
+                    uniformType: UTType(filenameExtension: url.pathExtension)
+                )
+            } catch {
+                debugPrint(error)
+                return nil
+            }
+        }
     }
     
     private func process(videos: [URL]) async -> [File] {
@@ -232,57 +337,9 @@ struct ImagePickerView: UIViewControllerRepresentable {
             return files
         }
     }
-    
-    private func process(video url: URL) async -> File? {
-        switch compression {
-        case .original:
-            do {
-                let previewImage = try await url.getVideoPreviewImage()
-                let previewData = previewImage.jpegData(compressionQuality: 1.0)
-                let previewURL = try previewData?.writeToTempDirectory(fileName: "\(UUID().uuidString).jpeg")
-                
-                return File(
-                    id: UUID().uuidString,
-                    name: "Video",
-                    data: nil,
-                    uniformType: UTType(filenameExtension: url.pathExtension),
-                    url: url,
-                    previewURL: previewURL,
-                    width: previewImage.size.width,
-                    height: previewImage.size.height
-                )
-            } catch {
-                debugPrint(error)
-                return nil
-            }
-            
-        case .compressed(let maximumSize, let quality):
-            do {
-                let previewImage = try await url.getVideoPreviewImage()
-                let resizedImage = previewImage.resized(to: maximumSize)
-                let previewData = resizedImage.jpegData(compressionQuality: quality.value)
-                let previewURL = try previewData?.writeToTempDirectory(fileName: "\(UUID().uuidString).jpeg")
-                
-                return File(
-                    id: UUID().uuidString,
-                    name: "Video",
-                    data: nil,
-                    uniformType: UTType(filenameExtension: url.pathExtension),
-                    url: url,
-                    previewURL: previewURL,
-                    width: previewImage.size.width,
-                    height: previewImage.size.height
-                )
-            } catch {
-                debugPrint(error)
-                return nil
-            }
-        }
-    }
 }
 
 extension ImagePickerView {
-    
     class Coordinator: NSObject {
         private let parent: ImagePickerView
         weak var viewController: UIViewController?
@@ -308,7 +365,6 @@ extension ImagePickerView {
 }
 
 extension ImagePickerView.Coordinator: UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-    
     func imagePickerController(
         _ picker: UIImagePickerController,
         didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]
@@ -339,11 +395,9 @@ extension ImagePickerView.Coordinator: UIImagePickerControllerDelegate, UINaviga
         parent.presentationMode.wrappedValue.dismiss()
         parent.onCancel()
     }
-    
 }
 
 extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
-    
     func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
         if results.isEmpty {
             parent.presentationMode.wrappedValue.dismiss()
@@ -372,7 +426,6 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                             makeCropViewController(with: image, presetFixedRatioType: presetFixedRatioType),
                             animated: true
                         )
-                        
                     } else {
                         assertionFailure("Crop mode is set to allowed while there is video or more than one image, this is not allowed!")
                         let files = parent.process(images: images)
@@ -382,7 +435,7 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                 case .notAllowed:
                     let images = parent.process(images: images)
                     let videos = await parent.process(videos: videos)
-                    parent.onSelect((images + videos).shuffled())
+                    parent.onSelect(images + videos)
                     parent.onEndImageProcessing()
                 }
             }
@@ -444,6 +497,28 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
         }
     }
     
+    private func loadVideo(from itemProvider: NSItemProvider) async -> URL? {
+        return await withCheckedContinuation { continuation in
+            if itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
+                itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, error in
+                    if let error {
+                        debugPrint(error)
+                    }
+                    
+                    do {
+                        let tempURL = try url?.moveToTempDirectory(fileName: UUID().uuidString)
+                        continuation.resume(returning: tempURL)
+                    } catch {
+                        debugPrint(error)
+                        continuation.resume(returning: nil)
+                    }
+                }
+            } else {
+                continuation.resume(returning: nil)
+            }
+        }
+    }
+    
     private func loadVideos(from itemProviders: [NSItemProvider]) async -> [URL] {
         return await withTaskGroup(of: URL?.self, returning: [URL].self) { group in
             var videos: [URL] = []
@@ -463,29 +538,9 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
             return videos
         }
     }
-    
-    private func loadVideo(from itemProvider: NSItemProvider) async -> URL? {
-        return await withCheckedContinuation { continuation in
-            if itemProvider.hasItemConformingToTypeIdentifier(UTType.movie.identifier) {
-                itemProvider.loadFileRepresentation(forTypeIdentifier: UTType.movie.identifier) { url, _ in
-                    do {
-                        let tempURL = try url?.moveToTempDirectory(fileName: UUID().uuidString)
-                        continuation.resume(returning: tempURL)
-                    } catch {
-                        debugPrint(error)
-                        continuation.resume(returning: nil)
-                    }
-                }
-            } else {
-                continuation.resume(returning: nil)
-            }
-        }
-    }
-    
 }
 
 extension ImagePickerView.Coordinator: CropViewControllerDelegate {
-    
     func cropViewControllerDidCrop(
         _ cropViewController: CropViewController,
         cropped: UIImage,
@@ -496,7 +551,7 @@ extension ImagePickerView.Coordinator: CropViewControllerDelegate {
         parent.onSelect([file])
         cropViewController.dismiss(animated: true) { [weak self] in
             guard let self else { return }
-            self.parent.presentationMode.wrappedValue.dismiss()
+            parent.presentationMode.wrappedValue.dismiss()
         }
     }
     
@@ -504,14 +559,19 @@ extension ImagePickerView.Coordinator: CropViewControllerDelegate {
         cropViewController.dismiss(animated: true) { [weak self] in
             guard
                 let self,
-                let viewController = self.viewController
+                let viewController = viewController
             else {
                 return
             }
             
             // If the sourceType is camera, we need to recreate the ViewController
-            if self.parent.source == .camera {
-                self.parent.makeImagePickerController(
+            switch parent.source {
+            case .multimedia, .photos:
+                // No-op
+                break
+                
+            case .camera:
+                parent.makeImagePickerController(
                     delegate: self,
                     addedTo: viewController
                 )
@@ -530,7 +590,6 @@ extension ImagePickerView.Coordinator: CropViewControllerDelegate {
     func cropViewControllerDidEndResize(_ cropViewController: CropViewController, original: UIImage, cropInfo: CropInfo) {
         
     }
-    
 }
 
 extension NSItemProvider: @unchecked Sendable {

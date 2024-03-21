@@ -3,7 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct DocumentPickerView: UIViewControllerRepresentable {
-    
+    // MARK: Properties
     private let allowsMultipleSelection: Bool
     private let onSelect: ([File]) -> Void
     private let onCancel: () -> Void
@@ -39,8 +39,8 @@ struct DocumentPickerView: UIViewControllerRepresentable {
 }
 
 extension DocumentPickerView {
-    
     class Coordinator: NSObject, UIDocumentPickerDelegate {
+        // MARK: Properties
         private let parent: DocumentPickerView
         
         init(parent: DocumentPickerView) {
@@ -55,15 +55,12 @@ extension DocumentPickerView {
                     guard let data = try? Data(contentsOf: url) else { continue }
                     let fileName = url.deletingPathExtension().lastPathComponent
                     let utType = UTType(tag: url.pathExtension, tagClass: .filenameExtension, conformingTo: nil)
+                    
                     let file = File(
                         id: UUID().uuidString,
                         name: fileName,
-                        data: data,
-                        uniformType: utType,
-                        url: url,
-                        previewURL: nil,
-                        width: nil,
-                        height: nil
+                        type: .file(OtherFile(data: data)),
+                        uniformType: utType
                     )
                     
                     files.append(file)
@@ -77,5 +74,4 @@ extension DocumentPickerView {
             parent.onCancel()
         }
     }
-    
 }
