@@ -92,15 +92,15 @@ struct ImagePickerView: UIViewControllerRepresentable {
     private let compression: ImagePickerViewCompression
     private let onSelect: ([File]) -> Void
     private let onCancel: () -> Void
-    private let onStartImageProcessing: () -> Void
-    private let onEndImageProcessing: () -> Void
+    private let onStartAssetsProcessing: () -> Void
+    private let onEndAssetsProcessing: () -> Void
     
     init(
         source: Source,
         onSelect: @escaping ([File]) -> Void,
         onCancel: @escaping () -> Void,
-        onStartImageProcessing: @escaping () -> Void,
-        onEndImageProcessing: @escaping () -> Void
+        onStartAssetsProcessing: @escaping () -> Void,
+        onEndAssetsProcessing: @escaping () -> Void
     ) {
         switch source {
         case .multimedia(_, let imageCompression):
@@ -123,8 +123,8 @@ struct ImagePickerView: UIViewControllerRepresentable {
         self.source = source
         self.onSelect = onSelect
         self.onCancel = onCancel
-        self.onStartImageProcessing = onStartImageProcessing
-        self.onEndImageProcessing = onEndImageProcessing
+        self.onStartAssetsProcessing = onStartAssetsProcessing
+        self.onEndAssetsProcessing = onEndAssetsProcessing
     }
     
     func makeUIViewController(context: UIViewControllerRepresentableContext<ImagePickerView>) -> UIViewController {
@@ -407,7 +407,7 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                 switch parent.cropMode {
                 case .notAllowed:
                     parent.presentationMode.wrappedValue.dismiss()
-                    parent.onStartImageProcessing()
+                    parent.onStartAssetsProcessing()
                     
                 default:
                     break
@@ -436,7 +436,7 @@ extension ImagePickerView.Coordinator: PHPickerViewControllerDelegate {
                     let images = parent.process(images: images)
                     let videos = await parent.process(videos: videos)
                     parent.onSelect(images + videos)
-                    parent.onEndImageProcessing()
+                    parent.onEndAssetsProcessing()
                 }
             }
         }

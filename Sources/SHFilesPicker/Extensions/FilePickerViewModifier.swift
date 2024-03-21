@@ -7,21 +7,21 @@ public struct FilePickerViewModifier: ViewModifier {
     // MARK: Properties
     private let onSelect: ([File]) -> Void
     private let onCancel: (() -> Void)?
-    private let onStartImageProcessing: (() -> Void)?
-    private let onEndImageProcessing: (() -> Void)?
+    private let onStartAssetsProcessing: (() -> Void)?
+    private let onEndAssetsProcessing: (() -> Void)?
     
     init(
         filePickerSource: Binding<FilePickerSource?>,
         onSelect: @escaping ([File]) -> Void,
         onCancel: (() -> Void)? = nil,
-        onStartImageProcessing: (() -> Void)? = nil,
-        onEndImageProcessing: (() -> Void)? = nil
+        onStartAssetsProcessing: (() -> Void)? = nil,
+        onEndAssetsProcessing: (() -> Void)? = nil
     ) {
         self._filePickerSource = filePickerSource
         self.onSelect = onSelect
         self.onCancel = onCancel
-        self.onStartImageProcessing = onStartImageProcessing
-        self.onEndImageProcessing = onEndImageProcessing
+        self.onStartAssetsProcessing = onStartAssetsProcessing
+        self.onEndAssetsProcessing = onEndAssetsProcessing
     }
     
     public func body(content: Content) -> some View {
@@ -39,13 +39,13 @@ public struct FilePickerViewModifier: ViewModifier {
                             self.filePickerSource = nil
                             onCancel?()
                         },
-                        onStartImageProcessing: {
+                        onStartAssetsProcessing: {
                             self.filePickerSource = nil
-                            onStartImageProcessing?()
+                            onStartAssetsProcessing?()
                         },
-                        onEndImageProcessing: {
+                        onEndAssetsProcessing: {
                             self.filePickerSource = nil
-                            onEndImageProcessing?()
+                            onEndAssetsProcessing?()
                         }
                     )
                     .ignoresSafeArea()
@@ -66,13 +66,13 @@ public struct FilePickerViewModifier: ViewModifier {
                             self.filePickerSource = nil
                             onCancel?()
                         },
-                        onStartImageProcessing: {
+                        onStartAssetsProcessing: {
                             self.filePickerSource = nil
-                            onStartImageProcessing?()
+                            onStartAssetsProcessing?()
                         },
-                        onEndImageProcessing: {
+                        onEndAssetsProcessing: {
                             self.filePickerSource = nil
-                            onEndImageProcessing?()
+                            onEndAssetsProcessing?()
                         }
                     )
                     .ignoresSafeArea()
@@ -102,13 +102,13 @@ public struct FilePickerViewModifier: ViewModifier {
                             self.filePickerSource = nil
                             onCancel?()
                         },
-                        onStartImageProcessing: {
+                        onStartAssetsProcessing: {
                             self.filePickerSource = nil
-                            onStartImageProcessing?()
+                            onStartAssetsProcessing?()
                         },
-                        onEndImageProcessing: {
+                        onEndAssetsProcessing: {
                             self.filePickerSource = nil
-                            onEndImageProcessing?()
+                            onEndAssetsProcessing?()
                         }
                     )
                     .ignoresSafeArea()
@@ -122,15 +122,15 @@ extension View {
         source: Binding<FilePickerSource?>,
         onSelect: @escaping ([File]) -> Void,
         onCancel: (() -> Void)? = nil,
-        onStartImageProcessing: (() -> Void)? = nil,
-        onEndImageProcessing: (() -> Void)? = nil
+        onStartAssetsProcessing: (() -> Void)? = nil,
+        onEndAssetsProcessing: (() -> Void)? = nil
     ) -> some View {
         modifier(FilePickerViewModifier(
             filePickerSource: source,
             onSelect: onSelect,
             onCancel: onCancel,
-            onStartImageProcessing: onStartImageProcessing,
-            onEndImageProcessing: onEndImageProcessing
+            onStartAssetsProcessing: onStartAssetsProcessing,
+            onEndAssetsProcessing: onEndAssetsProcessing
         ))
     }
 }
