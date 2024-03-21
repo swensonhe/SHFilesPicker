@@ -218,8 +218,7 @@ struct ImagePickerView: UIViewControllerRepresentable {
                 let file = File(
                     id: UUID().uuidString,
                     name: "image",
-                    type: .image(ImageFile(data: data, image: resizedImage, size: resizedImage.size)),
-                    uniformType: .jpeg
+                    type: .image(ImageFile(data: data, image: resizedImage, size: resizedImage.size, uniformType: .jpeg))
                 )
                 
                 files.append(file)
@@ -237,8 +236,7 @@ struct ImagePickerView: UIViewControllerRepresentable {
                 let file = File(
                     id: UUID().uuidString,
                     name: "image",
-                    type: .image(ImageFile(data: data, image: image, size: image.size)),
-                    uniformType: .jpeg
+                    type: .image(ImageFile(data: data, image: image, size: image.size, uniformType: .jpeg))
                 )
                 
                 files.append(file)
@@ -267,7 +265,7 @@ struct ImagePickerView: UIViewControllerRepresentable {
                 let previewImage = try await url.getVideoPreviewImage()
                 let resizedImage = previewImage.resized(to: maximumSize)
                 guard let previewData = resizedImage.jpegData(compressionQuality: quality.value) else {
-                    debugPrint("Unable to create jpegData from resizedImage")
+                    assertionFailure("Unable to create jpegData from resizedImage")
                     return nil
                 }
                 
@@ -275,14 +273,15 @@ struct ImagePickerView: UIViewControllerRepresentable {
                     localURL: url,
                     previewData: previewData,
                     previewImage: resizedImage,
-                    size: videoResolution ?? resizedImage.size
+                    previewUniformType: .jpeg,
+                    size: videoResolution ?? resizedImage.size,
+                    uniformType: UTType(filenameExtension: url.pathExtension)
                 )
                 
                 return File(
                     id: UUID().uuidString,
                     name: "video",
-                    type: .video(videoFile),
-                    uniformType: UTType(filenameExtension: url.pathExtension)
+                    type: .video(videoFile)
                 )
 
             } catch {
@@ -294,7 +293,7 @@ struct ImagePickerView: UIViewControllerRepresentable {
             do {
                 let previewImage = try await url.getVideoPreviewImage()
                 guard let previewData = previewImage.jpegData(compressionQuality: 1.0) else {
-                    debugPrint("Unable to create jpegData from resizedImage")
+                    assertionFailure("Unable to create jpegData from resizedImage")
                     return nil
                 }
                 
@@ -302,14 +301,15 @@ struct ImagePickerView: UIViewControllerRepresentable {
                     localURL: url,
                     previewData: previewData,
                     previewImage: previewImage,
-                    size: videoResolution ?? previewImage.size
+                    previewUniformType: .jpeg,
+                    size: videoResolution ?? previewImage.size,
+                    uniformType: UTType(filenameExtension: url.pathExtension)
                 )
                 
                 return File(
                     id: UUID().uuidString,
                     name: "video",
-                    type: .video(videoFile),
-                    uniformType: UTType(filenameExtension: url.pathExtension)
+                    type: .video(videoFile)
                 )
             } catch {
                 debugPrint(error)
