@@ -2,20 +2,20 @@ import UIKit
 import UniformTypeIdentifiers
 
 public struct ImageFile {
-    let data: Data
-    let image: UIImage
-    let size: CGSize
+    public let data: Data
+    public let image: UIImage
+    public let size: CGSize
 }
 
 public struct VideoFile {
-    let localURL: URL?
-    let previewData: Data
-    let previewImage: UIImage
-    let size: CGSize
+    public let localURL: URL?
+    public let previewData: Data
+    public let previewImage: UIImage
+    public let size: CGSize
 }
 
 public struct OtherFile {
-    let data: Data
+    public let data: Data
 }
 
 public enum FileType {
