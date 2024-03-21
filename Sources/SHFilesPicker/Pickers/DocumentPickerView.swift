@@ -48,20 +48,14 @@ extension DocumentPickerView {
         }
         
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            Task(priority: .background) {
+            Task { @MainActor in
                 var files: [File] = []
                 
                 for url in urls {
                     guard let data = try? Data(contentsOf: url) else { continue }
-                    let fileName = url.deletingPathExtension().lastPathComponent
                     let uniformType = UTType(tag: url.pathExtension, tagClass: .filenameExtension, conformingTo: nil)
                     
-                    let file = File(
-                        id: UUID().uuidString,
-                        name: fileName,
-                        type: .file(OtherFile(data: data, uniformType: uniformType))
-                    )
-                    
+                    let file = File(type: .file(OtherFile(data: data, uniformType: uniformType)))
                     files.append(file)
                 }
                 

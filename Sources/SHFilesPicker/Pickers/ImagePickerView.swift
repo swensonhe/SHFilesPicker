@@ -215,12 +215,14 @@ struct ImagePickerView: UIViewControllerRepresentable {
                     return
                 }
                 
-                let file = File(
-                    id: UUID().uuidString,
-                    name: "image",
-                    type: .image(ImageFile(data: data, image: resizedImage, size: resizedImage.size, uniformType: .jpeg))
+                let imageFile = ImageFile(
+                    data: data,
+                    image: resizedImage,
+                    size: resizedImage.size,
+                    uniformType: .jpeg
                 )
                 
+                let file = File(type: .image(imageFile))
                 files.append(file)
             }
             
@@ -233,12 +235,14 @@ struct ImagePickerView: UIViewControllerRepresentable {
                     return
                 }
                 
-                let file = File(
-                    id: UUID().uuidString,
-                    name: "image",
-                    type: .image(ImageFile(data: data, image: image, size: image.size, uniformType: .jpeg))
+                let imageFile = ImageFile(
+                    data: data,
+                    image: image,
+                    size: image.size,
+                    uniformType: .jpeg
                 )
                 
+                let file = File(type: .image(imageFile))
                 files.append(file)
             }
         }
@@ -279,12 +283,7 @@ struct ImagePickerView: UIViewControllerRepresentable {
                     uniformType: UTType(filenameExtension: url.pathExtension)
                 )
                 
-                return File(
-                    id: UUID().uuidString,
-                    name: "video",
-                    type: .video(videoFile)
-                )
-
+                return File(type: .video(videoFile))
             } catch {
                 debugPrint(error)
                 return nil
@@ -308,11 +307,7 @@ struct ImagePickerView: UIViewControllerRepresentable {
                     uniformType: UTType(filenameExtension: url.pathExtension)
                 )
                 
-                return File(
-                    id: UUID().uuidString,
-                    name: "video",
-                    type: .video(videoFile)
-                )
+                return File(type: .video(videoFile))
             } catch {
                 debugPrint(error)
                 return nil
@@ -360,7 +355,6 @@ extension ImagePickerView {
             )
             
             cropViewController.delegate = self
-            
             return cropViewController
         }
     }
