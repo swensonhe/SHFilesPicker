@@ -10,7 +10,7 @@ public struct FilePickerViewModifier: ViewModifier {
     private let onStartAssetsProcessing: (() -> Void)?
     private let onEndAssetsProcessing: (() -> Void)?
     
-    init(
+    public init(
         filePickerSource: Binding<FilePickerSource?>,
         onSelect: @escaping ([File]) -> Void,
         onCancel: (() -> Void)? = nil,
