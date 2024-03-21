@@ -1,9 +1,10 @@
 import SwiftUI
 
 public struct DocumentPickerViewModifier: ViewModifier {
-    
+    // MARK: Binding
     @Binding private var isPresented: Bool
     
+    // MARK: Properties
     private let doucmentPickerViewAllowsMultipleSelection: Bool
     private let onSelect: ([File]) -> Void
     private let onCancel: (() -> Void)?
@@ -37,11 +38,9 @@ public struct DocumentPickerViewModifier: ViewModifier {
                 .ignoresSafeArea()
             }
     }
-    
 }
 
 extension View {
-    
     public func withDocumentPicker(
         isPresented: Binding<Bool>,
         doucmentPickerViewAllowsMultipleSelection: Bool,
@@ -55,5 +54,4 @@ extension View {
             onCancel: onCancel
         ))
     }
-    
 }
