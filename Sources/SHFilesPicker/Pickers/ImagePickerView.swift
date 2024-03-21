@@ -270,7 +270,8 @@ struct ImagePickerView: UIViewControllerRepresentable {
                 }
                 
                 let videoFile = VideoFile(
-                    localURL: url,
+                    url: url,
+                    data: try Data(contentsOf: url),
                     previewData: previewData,
                     previewImage: resizedImage,
                     previewUniformType: .jpeg,
@@ -298,7 +299,8 @@ struct ImagePickerView: UIViewControllerRepresentable {
                 }
                 
                 let videoFile = VideoFile(
-                    localURL: url,
+                    url: url,
+                    data: try Data(contentsOf: url),
                     previewData: previewData,
                     previewImage: previewImage,
                     previewUniformType: .jpeg,

@@ -9,7 +9,8 @@ public struct ImageFile {
 }
 
 public struct VideoFile {
-    public let localURL: URL?
+    public let url: URL?
+    public let data: Data
     public let previewData: Data
     public let previewImage: UIImage
     public let previewUniformType: UTType?
